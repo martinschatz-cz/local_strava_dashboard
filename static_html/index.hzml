@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connect to Strava</title>
+</head>
+<body>
+    <h1>Welcome!</h1>
+    <p><a href="http://www.strava.com/oauth/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost/exchange_token&response_type=code&scope=read,activity:read">Connect to Strava</a></p>
+</body>
+</html>
