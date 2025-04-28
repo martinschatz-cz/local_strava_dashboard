@@ -9,7 +9,7 @@ app = Flask(__name__, template_folder='/app/templates')
 
 CLIENT_ID = "155612"  # Replace with your actual Strava Client ID
 CLIENT_SECRET = "7cd0b1dd7c81c3755da428082a3228182542886b"  # Replace with your actual Strava Client Secret
-REDIRECT_URI = "http://192.168.0.120:8042/exchange_token"
+REDIRECT_URI = "http://strava.schaetz.cz/exchange_token"
 TOKEN_URL = "https://www.strava.com/oauth/token"
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 
