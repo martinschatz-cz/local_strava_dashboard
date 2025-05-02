@@ -20,6 +20,7 @@ CALLBACK_URL = "https://strava.schaetz.cz/exchange_token"  # Callback URL for we
 VERIFY_TOKEN = "STRAVA"  # Token to verify webhook requests
 
 subscription_id = None
+initialized = False
 
 def subscribe_to_webhook():
     """
@@ -242,9 +243,12 @@ def delayed_subscription():
         print(f"Error subscribing to webhook: {e}")
         subscription_id = None
 
-@app.before_first_request
+@app.before_request
 def initialize_subscription():
-    threading.Thread(target=delayed_subscription).start()
+    global initialized
+    if not initialized:
+        initialized = True
+        threading.Thread(target=delayed_subscription).start()
 
 @app.teardown_appcontext
 def cleanup_subscription(exception=None):
@@ -269,6 +273,7 @@ def exchange_token_handler():
             return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
         else:
             return jsonify({'error': 'Invalid verify token'}), 403
+    # return "Exchange token endpoint"
 
     # Handle token exchange and data processing
     authorization_code = request.args.get('code')
