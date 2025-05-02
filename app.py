@@ -4,6 +4,10 @@ import json
 import time
 import pandas as pd
 from datetime import datetime, timedelta
+from bokeh.plotting import figure
+from bokeh.embed import components
+from bokeh.resources import CDN
+from bokeh.resources import INLINE
 
 app = Flask(__name__, template_folder='/app/templates')
 
@@ -146,8 +150,16 @@ def get_strava_activities_as_dataframe(access_token: str, days_back: int) -> pd.
         print(f"\nAn error occurred during the request: {e}")
         return pd.DataFrame()
 
-@app.route('/exchange_token')
+@app.route('/exchange_token', methods=['GET', 'POST'])
 def exchange_token_handler():
+    """
+    Handles the exchange of authorization code for tokens and processes Strava activities.
+
+    Returns:
+        Response: HTML response with the result of the token exchange and activity processing.
+    """
+
+    # Handle token exchange and data processing
     authorization_code = request.args.get('code')
     state = request.args.get('state')
     scope = request.args.get('scope')
@@ -159,8 +171,41 @@ def exchange_token_handler():
         if access_token:
             activities_df = get_strava_activities_as_dataframe(access_token, days_back=30)
             elevation_summary = ""
+            bokeh_script, bokeh_div_7_days, bokeh_div_30_days = "", "", ""
+
             if not activities_df.empty:
                 elevation_summary = summarize_elevation_data(activities_df.copy())
+
+                # Prepare data for the last 7 days
+                activities_df['date'] = pd.to_datetime(activities_df['date']).dt.date
+                last_7_days = activities_df[activities_df['date'] >= (datetime.now() - timedelta(days=7)).date()]
+                daily_elevation = last_7_days.groupby('date')['elevation_gain_m'].sum().reset_index()
+
+                # Bar chart for elevation gain in the last 7 days
+                bar_chart = figure(title="Elevation Gain (Last 7 Days)", x_axis_label="Date",
+                                   y_axis_label="Elevation Gain (m)",
+                                   x_range=[str(d) for d in daily_elevation['date']], width=800, height=400)
+                bar_chart.vbar(x=[str(d) for d in daily_elevation['date']], top=daily_elevation['elevation_gain_m'],
+                               width=0.5)
+                #bokeh_script, bokeh_div_7_days = components(bar_chart)
+
+                # Calculate cumulative elevation
+                cumulative_elevation = activities_df.groupby('date')['elevation_gain_m'].sum().cumsum().reset_index()
+
+                # Cumulative chart for elevation gain in the last 30 days
+                cumulative_chart = figure(title="Cumulative Elevation Gain (Last 30 Days)", x_axis_label="Date",
+                                          y_axis_label="Cumulative Elevation Gain (m)",
+                                          x_axis_type="datetime", width=800, height=400)
+                cumulative_chart.line(pd.to_datetime(cumulative_elevation['date']),
+                                      cumulative_elevation['elevation_gain_m'], line_width=2)
+                #_, bokeh_div_30_days = components(cumulative_chart)
+
+                # Single call: returns one <script> and a tuple of divs
+                bokeh_script, (bokeh_div_7_days, bokeh_div_30_days) = components(
+                    (bar_chart, cumulative_chart),
+                    INLINE
+                    #CDN
+                )
 
             return render_template('exchange_result.html',
                                    authorization_code=authorization_code,
@@ -168,7 +213,10 @@ def exchange_token_handler():
                                    refresh_token=refresh_token,
                                    state=state,
                                    scope=scope,
-                                   elevation_summary=elevation_summary)
+                                   elevation_summary=elevation_summary,
+                                   bokeh_script=bokeh_script,
+                                   bokeh_div_7_days=bokeh_div_7_days,
+                                   bokeh_div_30_days=bokeh_div_30_days)
         else:
             return render_template('error.html', error="Failed to exchange authorization code.")
     else:

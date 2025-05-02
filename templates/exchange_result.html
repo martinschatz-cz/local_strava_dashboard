@@ -1,32 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Strava Authorization Result</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        h1 { color: green; }
-        p { margin-bottom: 10px; }
-        pre { background-color: #f4f4f4; padding: 10px; border: 1px solid #ddd; white-space: pre-wrap; word-break: break-word; }
-        h2 { margin-top: 20px; }
-        a { color: blue; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-    </style>
+  <meta charset="utf-8">
+  <title>Strava Authorization Result</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    h1 { color: green; }
+    p { margin-bottom: 10px; }
+    pre { background-color: #f4f4f4; padding: 10px;
+          border: 1px solid #ddd; white-space: pre-wrap;
+          word-break: break-word; }
+    h2 { margin-top: 20px; }
+    a { color: blue; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+
+  {#– This injects ALL Bokeh JS/CSS inline –#}
+  {{ bokeh_script|safe }}
 </head>
 <body>
-    <h1>Strava Authorization Successful!</h1>
-    <p>Authorization Code: Acquired</p>
-    <p>Access Token: Acquired</p>
-    <p>Refresh Token: Acquired</p>
-    <p>State: {{ state }}</p>
-    <p>Scope: {{ scope }}</p>
+  <h1>Strava Authorization Successful!</h1>
 
-    {% if elevation_summary %}
-        <h2>Elevation Summary (Last 30 Days)</h2>
-        <pre>{{ elevation_summary }}</pre>
-    {% else %}
-        <p>No elevation data available for the last 30 days (or no relevant activities found).</p>
-    {% endif %}
+  <p>Authorization Code: Acquired</p>
+  <p>Access Token: Acquired</p>
+  <p>Refresh Token: Acquired</p>
+  <p>State: {{ state }}</p>
+  <p>Scope: {{ scope }}</p>
 
-    <p><a href="/">Connect to Strava Again</a></p>
+  {% if elevation_summary %}
+    <h2>Elevation Summary (Last 30 Days)</h2>
+    <pre>{{ elevation_summary }}</pre>
+  {% else %}
+    <p>No elevation data available for the last 30 days (or no relevant activities found).</p>
+  {% endif %}
+
+  <h2>Elevation Gain (Last 7 Days)</h2>
+  <div style="width: 100%; overflow-x: auto;">
+    {{ bokeh_div_7_days|safe }}
+  </div>
+
+  <h2>Cumulative Elevation Gain (Last 30 Days)</h2>
+  <div style="width: 100%; overflow-x: auto;">
+    {{ bokeh_div_30_days|safe }}
+  </div>
+
+  <p><a href="/">Connect to Strava Again</a></p>
 </body>
 </html>
