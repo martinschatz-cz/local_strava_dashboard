@@ -40,8 +40,10 @@ def subscribe_to_webhook():
         else:
             print(f"❌ Failed to subscribe to the webhook. Status code: {response.status_code}")
             print(response.text)
+            return None
     except requests.exceptions.RequestException as e:
         print(f"An error occurred during webhook subscription: {e}")
+        return None
 
 def unsubscribe_from_webhook(subscription_id):
     """
@@ -51,12 +53,14 @@ def unsubscribe_from_webhook(subscription_id):
         subscription_id (str): The ID of the subscription to be deleted.
     """
     try:
-        response = requests.delete(
-            f"{WEBHOOK_SUBSCRIPTION_URL}/{subscription_id}",
-            params={'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET}
-        )
+        url = f"{WEBHOOK_SUBSCRIPTION_URL}/{subscription_id}"
+        params = {
+            'client_id': CLIENT_ID,
+            'client_secret': CLIENT_SECRET
+        }
+        response = requests.delete(url, params=params)
         if response.status_code == 204:
-            print("✅ Successfully unsubscribed from the webhook.")
+            print(f"✅ Successfully unsubscribed from the webhook. Subscription ID: {subscription_id}")
         else:
             print(f"❌ Failed to unsubscribe from the webhook. Status code: {response.status_code}")
             print(response.text)
@@ -234,8 +238,6 @@ def exchange_token_handler():
     Returns:
         Response: HTML response with the result of the token exchange and activity processing.
     """
-    # Call the subscription function at the start of the app
-    # subscription_id = subscribe_to_webhook()
 
     if request.method == 'GET' and 'hub.challenge' in request.args:
         # Handle callback validation
