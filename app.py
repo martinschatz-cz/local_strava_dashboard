@@ -235,7 +235,7 @@ def exchange_token_handler():
         Response: HTML response with the result of the token exchange and activity processing.
     """
     # Call the subscription function at the start of the app
-    subscription_id = subscribe_to_webhook()
+    # subscription_id = subscribe_to_webhook()
 
     if request.method == 'GET' and 'hub.challenge' in request.args:
         # Handle callback validation
@@ -271,15 +271,30 @@ def exchange_token_handler():
                                    scope=scope,
                                    elevation_summary=elevation_summary)
         else:
-            unsubscribe_from_webhook(subscription_id)
+            # unsubscribe_from_webhook(subscription_id)
             return render_template('error.html', error="Failed to exchange authorization code.")
     else:
-        unsubscribe_from_webhook(subscription_id)
+        # unsubscribe_from_webhook(subscription_id)
         error = request.args.get('error')
         return render_template('error.html', error=f"Authorization failed: {error}")
 
 
 
 if __name__ == '__main__':
-    # Run the Flask application
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    # Call the subscription function at the start of the app
+    try:
+        subscription_id = subscribe_to_webhook()
+    except Exception as e:
+        print(f"Error subscribing to webhook: {e}")
+        subscription_id = None
+
+    try:
+        # Run the Flask application
+        app.run(debug=True, port=5000, host='0.0.0.0')
+    finally:
+        # Unsubscribe from the webhook when the app is stopped
+        if subscription_id:
+            try:
+                unsubscribe_from_webhook(subscription_id)
+            except Exception as e:
+                print(f"Error unsubscribing from webhook: {e}")
