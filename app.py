@@ -11,7 +11,7 @@ app = Flask(__name__, template_folder='/app/templates')
 # Constants for Strava API integration
 CLIENT_ID = "155612"  # Replace with your actual Strava Client ID
 CLIENT_SECRET = "7cd0b1dd7c81c3755da428082a3228182542886b"  # Replace with your actual Strava Client Secret
-REDIRECT_URI = "http://strava.schaetz.cz/exchange_token"  # Redirect URI for OAuth
+REDIRECT_URI = "https://strava.schaetz.cz/exchange_token"  # Redirect URI for OAuth
 TOKEN_URL = "https://www.strava.com/oauth/token"  # URL to exchange authorization code for tokens
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"  # URL to fetch activities
 WEBHOOK_SUBSCRIPTION_URL = "https://www.strava.com/api/v3/push_subscriptions"  # URL for webhook subscription
