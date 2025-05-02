@@ -283,6 +283,12 @@ def exchange_token_handler():
 
 
 if __name__ == '__main__':
+    # Run the Flask application
+    app.run(debug=True, port=5000, host='0.0.0.0')
+    
+    # Wait for 2 seconds after starting the app
+    time.sleep(2)
+
     # Call the subscription function at the start of the app
     try:
         subscription_id = subscribe_to_webhook()
@@ -290,13 +296,10 @@ if __name__ == '__main__':
         print(f"Error subscribing to webhook: {e}")
         subscription_id = None
 
-    try:
-        # Run the Flask application
-        app.run(debug=True, port=5000, host='0.0.0.0')
-    finally:
-        # Unsubscribe from the webhook when the app is stopped
-        if subscription_id:
-            try:
-                unsubscribe_from_webhook(subscription_id)
-            except Exception as e:
-                print(f"Error unsubscribing from webhook: {e}")
+
+    # Unsubscribe from the webhook when the app is stopped
+    if subscription_id:
+        try:
+            unsubscribe_from_webhook(subscription_id)
+        except Exception as e:
+            print(f"Error unsubscribing from webhook: {e}")
