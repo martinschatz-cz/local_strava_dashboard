@@ -4,10 +4,10 @@ import json
 import time
 import pandas as pd
 from datetime import datetime, timedelta
-from bokeh.plotting import figure
-from bokeh.embed import components
-from bokeh.resources import CDN
-from bokeh.resources import INLINE
+import seaborn as sns
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
 
 app = Flask(__name__, template_folder='/app/templates')
 
@@ -152,60 +152,42 @@ def get_strava_activities_as_dataframe(access_token: str, days_back: int) -> pd.
 
 @app.route('/exchange_token', methods=['GET', 'POST'])
 def exchange_token_handler():
-    """
-    Handles the exchange of authorization code for tokens and processes Strava activities.
-
-    Returns:
-        Response: HTML response with the result of the token exchange and activity processing.
-    """
-
-    # Handle token exchange and data processing
     authorization_code = request.args.get('code')
     state = request.args.get('state')
     scope = request.args.get('scope')
 
     if authorization_code:
-        print(f"Authorization Code received: {authorization_code}")
         access_token, refresh_token = get_strava_api_access_token(CLIENT_ID, CLIENT_SECRET, authorization_code)
 
         if access_token:
             activities_df = get_strava_activities_as_dataframe(access_token, days_back=30)
             elevation_summary = ""
-            bokeh_script, bokeh_div_7_days, bokeh_div_30_days = "", "", ""
+            bar_chart_img, cumulative_chart_img = "", ""
 
             if not activities_df.empty:
                 elevation_summary = summarize_elevation_data(activities_df.copy())
 
-                # Prepare data for the last 7 days
+                # Připravit data pro posledních 7 dní
                 activities_df['date'] = pd.to_datetime(activities_df['date']).dt.date
                 last_7_days = activities_df[activities_df['date'] >= (datetime.now() - timedelta(days=7)).date()]
                 daily_elevation = last_7_days.groupby('date')['elevation_gain_m'].sum().reset_index()
 
-                # Bar chart for elevation gain in the last 7 days
-                bar_chart = figure(title="Elevation Gain (Last 7 Days)", x_axis_label="Date",
-                                   y_axis_label="Elevation Gain (m)",
-                                   x_range=[str(d) for d in daily_elevation['date']], width=800, height=400)
-                bar_chart.vbar(x=[str(d) for d in daily_elevation['date']], top=daily_elevation['elevation_gain_m'],
-                               width=0.5)
-                #bokeh_script, bokeh_div_7_days = components(bar_chart)
+                # Vytvoření sloupcového grafu
+                plt.figure(figsize=(10, 5))
+                sns.barplot(x='date', y='elevation_gain_m', data=daily_elevation, color='blue')
+                plt.title("Elevation Gain (Last 7 Days)")
+                plt.xlabel("Date")
+                plt.ylabel("Elevation Gain (m)")
+                bar_chart_img = save_plot_to_base64()
 
-                # Calculate cumulative elevation
+                # Vytvoření kumulativního grafu
                 cumulative_elevation = activities_df.groupby('date')['elevation_gain_m'].sum().cumsum().reset_index()
-
-                # Cumulative chart for elevation gain in the last 30 days
-                cumulative_chart = figure(title="Cumulative Elevation Gain (Last 30 Days)", x_axis_label="Date",
-                                          y_axis_label="Cumulative Elevation Gain (m)",
-                                          x_axis_type="datetime", width=800, height=400)
-                cumulative_chart.line(pd.to_datetime(cumulative_elevation['date']),
-                                      cumulative_elevation['elevation_gain_m'], line_width=2)
-                #_, bokeh_div_30_days = components(cumulative_chart)
-
-                # Single call: returns one <script> and a tuple of divs
-                bokeh_script, (bokeh_div_7_days, bokeh_div_30_days) = components(
-                    (bar_chart, cumulative_chart),
-                    INLINE
-                    #CDN
-                )
+                plt.figure(figsize=(10, 5))
+                sns.lineplot(x='date', y='elevation_gain_m', data=cumulative_elevation, marker='o')
+                plt.title("Cumulative Elevation Gain (Last 30 Days)")
+                plt.xlabel("Date")
+                plt.ylabel("Cumulative Elevation Gain (m)")
+                cumulative_chart_img = save_plot_to_base64()
 
             return render_template('exchange_result.html',
                                    authorization_code=authorization_code,
@@ -214,14 +196,23 @@ def exchange_token_handler():
                                    state=state,
                                    scope=scope,
                                    elevation_summary=elevation_summary,
-                                   bokeh_script=bokeh_script,
-                                   bokeh_div_7_days=bokeh_div_7_days,
-                                   bokeh_div_30_days=bokeh_div_30_days)
+                                   bar_chart_img=bar_chart_img,
+                                   cumulative_chart_img=cumulative_chart_img)
         else:
             return render_template('error.html', error="Failed to exchange authorization code.")
     else:
         error = request.args.get('error')
         return render_template('error.html', error=f"Authorization failed: {error}")
+
+def save_plot_to_base64():
+    """Uloží aktuální graf jako Base64 string."""
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    buffer.seek(0)
+    img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    buffer.close()
+    plt.close()
+    return f"data:image/png;base64,{img_base64}"
 
 # Remove the root route if Nginx will serve the initial page
 # @app.route('/')
