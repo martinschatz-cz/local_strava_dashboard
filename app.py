@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, jsonify
 import requests
+import threading
 import json
 import time
 import pandas as pd
@@ -17,6 +18,8 @@ ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"  # URL to fe
 WEBHOOK_SUBSCRIPTION_URL = "https://www.strava.com/api/v3/push_subscriptions"  # URL for webhook subscription
 CALLBACK_URL = "https://strava.schaetz.cz/exchange_token"  # Callback URL for webhook
 VERIFY_TOKEN = "STRAVA"  # Token to verify webhook requests
+
+subscription_id = None
 
 def subscribe_to_webhook():
     """
@@ -230,6 +233,27 @@ def get_strava_activities_as_dataframe(access_token: str, days_back: int) -> pd.
         print(f"\nAn error occurred during the request: {e}")
         return pd.DataFrame()
 
+def delayed_subscription():
+    global subscription_id
+    time.sleep(2)  # Wait for the app to fully start
+    try:
+        subscription_id = subscribe_to_webhook()
+    except Exception as e:
+        print(f"Error subscribing to webhook: {e}")
+        subscription_id = None
+
+@app.before_first_request
+def initialize_subscription():
+    threading.Thread(target=delayed_subscription).start()
+
+@app.teardown_appcontext
+def cleanup_subscription(exception=None):
+    if subscription_id:
+        try:
+            unsubscribe_from_webhook(subscription_id)
+        except Exception as e:
+            print(f"Error unsubscribing from webhook: {e}")
+
 @app.route('/exchange_token', methods=['GET', 'POST'])
 def exchange_token_handler():
     """
@@ -285,21 +309,3 @@ def exchange_token_handler():
 if __name__ == '__main__':
     # Run the Flask application
     app.run(debug=True, port=5000, host='0.0.0.0')
-    
-    # Wait for 2 seconds after starting the app
-    time.sleep(2)
-
-    # Call the subscription function at the start of the app
-    try:
-        subscription_id = subscribe_to_webhook()
-    except Exception as e:
-        print(f"Error subscribing to webhook: {e}")
-        subscription_id = None
-
-
-    # Unsubscribe from the webhook when the app is stopped
-    if subscription_id:
-        try:
-            unsubscribe_from_webhook(subscription_id)
-        except Exception as e:
-            print(f"Error unsubscribing from webhook: {e}")
