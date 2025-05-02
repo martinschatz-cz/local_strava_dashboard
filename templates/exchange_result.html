@@ -35,14 +35,16 @@
   {% endif %}
 
   <h2>Elevation Gain (Last 7 Days)</h2>
-  <div style="width: 100%; overflow-x: auto;">
+
     {{ bokeh_div_7_days|safe }}
-  </div>
+    {{ script|safe }}
+
 
   <h2>Cumulative Elevation Gain (Last 30 Days)</h2>
-  <div style="width: 100%; overflow-x: auto;">
+
     {{ bokeh_div_30_days|safe }}
-  </div>
+    {{ script|safe }}
+
 
   <p><a href="/">Connect to Strava Again</a></p>
 </body>

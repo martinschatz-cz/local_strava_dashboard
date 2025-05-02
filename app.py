@@ -200,12 +200,21 @@ def exchange_token_handler():
                                       cumulative_elevation['elevation_gain_m'], line_width=2)
                 #_, bokeh_div_30_days = components(cumulative_chart)
 
-                # Single call: returns one <script> and a tuple of divs
-                bokeh_script, (bokeh_div_7_days, bokeh_div_30_days) = components(
-                    (bar_chart, cumulative_chart),
-                    INLINE
-                    #CDN
-                )
+                # # Single call: returns one <script> and a tuple of divs
+                # bokeh_script, (bokeh_div_7_days, bokeh_div_30_days) = components(
+                #     (bar_chart, cumulative_chart),
+                #     INLINE
+                #     #CDN
+                # )
+
+                # 1st chart
+                script7, bokeh_div_7_days = components(bar_chart, INLINE)
+
+                # 2nd chart (you can omit CDN here, since it's already in script7)
+                script30, bokeh_div_30_days = components(cumulative_chart, INLINE)
+
+                # merge scripts
+                bokeh_script = script7 + script30
 
             return render_template('exchange_result.html',
                                    authorization_code=authorization_code,
@@ -214,7 +223,8 @@ def exchange_token_handler():
                                    state=state,
                                    scope=scope,
                                    elevation_summary=elevation_summary,
-                                   bokeh_script=bokeh_script,
+                                   bokeh_script=INLINE.render_js(),
+                                   script=bokeh_script,
                                    bokeh_div_7_days=bokeh_div_7_days,
                                    bokeh_div_30_days=bokeh_div_30_days)
         else:
