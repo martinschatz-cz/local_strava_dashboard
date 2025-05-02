@@ -5,15 +5,74 @@ import time
 import pandas as pd
 from datetime import datetime, timedelta
 
+# Initialize the Flask application
 app = Flask(__name__, template_folder='/app/templates')
 
+# Constants for Strava API integration
 CLIENT_ID = "155612"  # Replace with your actual Strava Client ID
 CLIENT_SECRET = "7cd0b1dd7c81c3755da428082a3228182542886b"  # Replace with your actual Strava Client Secret
-REDIRECT_URI = "http://localhost:8042/exchange_token" # did not change anything
-TOKEN_URL = "https://www.strava.com/oauth/token"
-ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+REDIRECT_URI = "http://strava.schaetz.cz/exchange_token"  # Redirect URI for OAuth
+TOKEN_URL = "https://www.strava.com/oauth/token"  # URL to exchange authorization code for tokens
+ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"  # URL to fetch activities
+WEBHOOK_SUBSCRIPTION_URL = "https://www.strava.com/api/v3/push_subscriptions"  # URL for webhook subscription
+CALLBACK_URL = "https://strava.schaetz.cz/exchange_token"  # Callback URL for webhook
+VERIFY_TOKEN = "STRAVA"  # Token to verify webhook requests
+
+def subscribe_to_webhook():
+    """
+    Subscribes to the Strava webhook by sending a POST request to the subscription endpoint.
+
+    Returns:
+        str: The subscription ID if the subscription is successful, None otherwise.
+    """
+    payload = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'callback_url': CALLBACK_URL,
+        'verify_token': VERIFY_TOKEN
+    }
+    try:
+        response = requests.post(WEBHOOK_SUBSCRIPTION_URL, data=payload)
+        if response.status_code == 201:
+            subscription_id = response.json().get("id")
+            print(f"✅ Successfully subscribed to the webhook. Subscription ID: {subscription_id}")
+            return subscription_id
+        else:
+            print(f"❌ Failed to subscribe to the webhook. Status code: {response.status_code}")
+            print(response.text)
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred during webhook subscription: {e}")
+
+def unsubscribe_from_webhook(subscription_id):
+    """
+    Unsubscribes from the Strava webhook by sending a DELETE request to the subscription endpoint.
+
+    Args:
+        subscription_id (str): The ID of the subscription to be deleted.
+    """
+    try:
+        response = requests.delete(
+            f"{WEBHOOK_SUBSCRIPTION_URL}/{subscription_id}",
+            params={'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET}
+        )
+        if response.status_code == 204:
+            print("✅ Successfully unsubscribed from the webhook.")
+        else:
+            print(f"❌ Failed to unsubscribe from the webhook. Status code: {response.status_code}")
+            print(response.text)
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred during webhook unsubscription: {e}")
 
 def summarize_elevation_data(df):
+    """
+    Summarizes elevation data from a DataFrame containing Strava activities.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing activity data.
+
+    Returns:
+        str: A summary of elevation data for the last 7 and 30 days.
+    """
     selection_df = df[df['activity_type'].isin(['Run', 'Walk', 'Hike'])].copy()
     if selection_df.empty:
         return "No relevant activities (Run, Walk, Hike) found for elevation analysis."
@@ -52,6 +111,17 @@ def summarize_elevation_data(df):
     return summary
 
 def get_strava_api_access_token(client_id, client_secret, authorization_code):
+    """
+    Exchanges an authorization code for an access token and refresh token.
+
+    Args:
+        client_id (str): Strava Client ID.
+        client_secret (str): Strava Client Secret.
+        authorization_code (str): Authorization code received from Strava.
+
+    Returns:
+        tuple: Access token and refresh token if successful, (None, None) otherwise.
+    """
     payload = {
         'client_id': client_id,
         'client_secret': client_secret,
@@ -100,6 +170,16 @@ def get_strava_api_access_token(client_id, client_secret, authorization_code):
         return None, None
 
 def get_strava_activities_as_dataframe(access_token: str, days_back: int) -> pd.DataFrame:
+    """
+    Fetches Strava activities for the given number of days and returns them as a DataFrame.
+
+    Args:
+        access_token (str): Access token for Strava API.
+        days_back (int): Number of days to fetch activities for.
+
+    Returns:
+        pd.DataFrame: DataFrame containing activity data.
+    """
     headers = {"Authorization": f"Bearer {access_token}"}
     after_date = datetime.now() - timedelta(days=days_back)
     after_timestamp = int(after_date.timestamp())
@@ -146,8 +226,22 @@ def get_strava_activities_as_dataframe(access_token: str, days_back: int) -> pd.
         print(f"\nAn error occurred during the request: {e}")
         return pd.DataFrame()
 
-@app.route('/exchange_token')
+@app.route('/exchange_token', methods=['GET', 'POST'])
 def exchange_token_handler():
+    """
+    Handles the exchange of authorization code for tokens and processes Strava activities.
+
+    Returns:
+        Response: HTML response with the result of the token exchange and activity processing.
+    """
+    if request.method == 'GET' and 'hub.challenge' in request.args:
+        # Handle callback validation
+        if request.args.get('hub.verify_token') == VERIFY_TOKEN:
+            return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
+        else:
+            return jsonify({'error': 'Invalid verify token'}), 403
+
+    # Handle token exchange and data processing
     authorization_code = request.args.get('code')
     state = request.args.get('state')
     scope = request.args.get('scope')
@@ -162,6 +256,10 @@ def exchange_token_handler():
             if not activities_df.empty:
                 elevation_summary = summarize_elevation_data(activities_df.copy())
 
+            # Unsubscribe from the webhook after processing the data
+            subscription_id = "your_subscription_id_here"  # Replace with the actual subscription ID
+            unsubscribe_from_webhook(subscription_id)
+
             return render_template('exchange_result.html',
                                    authorization_code=authorization_code,
                                    access_token=access_token,
@@ -175,11 +273,9 @@ def exchange_token_handler():
         error = request.args.get('error')
         return render_template('error.html', error=f"Authorization failed: {error}")
 
-# Remove the root route if Nginx will serve the initial page
-# @app.route('/')
-# def index():
-#     authorization_url = f"http://www.strava.com/oauth/authorize?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=read,activity:read"
-#     return f'<a href="{authorization_url}">Connect to Strava</a>'
+# Call the subscription function at the start of the app
+subscription_id = subscribe_to_webhook()
 
 if __name__ == '__main__':
+    # Run the Flask application
     app.run(debug=True, port=5000, host='0.0.0.0')
