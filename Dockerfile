@@ -11,6 +11,7 @@ EXPOSE 5000
 
 ENV CLIENT_ID=${CLIENT_ID}
 ENV CLIENT_SECRET=${CLIENT_SECRET}
-ENV REDIRECT_URI=http://192.168.0.120:8042/exchange_token
+# adding port did not change anything 
+ENV REDIRECT_URI=localhost:8042/exchange_token
 
 CMD ["python", "app.py"]
