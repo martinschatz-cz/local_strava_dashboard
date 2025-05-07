@@ -3,6 +3,17 @@ import requests
 import threading
 import time
 import logging
+import signal
+import sys
+
+def handle_shutdown_signal(signum, frame):
+    logging.info("Received shutdown signal. Cleaning up resources.")
+    delayed_unsubscription()
+    sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, handle_shutdown_signal)  # Handle Ctrl+C
+signal.signal(signal.SIGTERM, handle_shutdown_signal)  # Handle Docker stop
 
 # Configure logging
 logging.basicConfig(
@@ -93,7 +104,7 @@ def delayed_unsubscription():
                 unsubscribe_from_webhook(subscription_id)
     threading.Thread(target=task).start()
 
-@app.before_request
+@app.before_first_request
 def initialize_subscription():
     logging.debug("Entering initialize_subscription function.")
     global initialized
@@ -102,8 +113,8 @@ def initialize_subscription():
         logging.info("Initializing webhook subscription.")
         delayed_subscription()
 
-@app.teardown_appcontext
-def cleanup_subscription(exception=None):
+@app.before_shutdown
+def cleanup_subscription():
     logging.debug("Entering cleanup_subscription function.")
     delayed_unsubscription()
 
