@@ -104,7 +104,7 @@ def delayed_unsubscription():
                 unsubscribe_from_webhook(subscription_id)
     threading.Thread(target=task).start()
 
-@app.before_first_request
+@app.before_request
 def initialize_subscription():
     logging.debug("Entering initialize_subscription function.")
     global initialized
@@ -112,11 +112,6 @@ def initialize_subscription():
         initialized = True
         logging.info("Initializing webhook subscription.")
         delayed_subscription()
-
-@app.before_shutdown
-def cleanup_subscription():
-    logging.debug("Entering cleanup_subscription function.")
-    delayed_unsubscription()
 
 @app.route('/unsubscribe', methods=['POST'])
 def manual_unsubscribe():
