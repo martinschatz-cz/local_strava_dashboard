@@ -132,22 +132,20 @@ def manual_unsubscribe():
 @app.route('/exchange_token', methods=['GET', 'POST'])
 def exchange_token_handler():
     """
-        Handles the exchange of authorization code for tokens and processes Strava activities.
-        Returns:
-            Response: HTML response with the result of the token exchange and activity processing.
+    Handles the exchange of authorization code for tokens and processes Strava activities.
+    Returns:
+        Response: HTML response with the result of the token exchange and activity processing.
     """
-
     if request.method == 'GET':
-        if 'hub.challenge' in request.args:
-            if request.args.get('hub.verify_token') == VERIFY_TOKEN:
-                logging.info("Webhook validation successful.")
-                return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
-            else:
-                logging.error("Invalid verify token received.")
-                return jsonify({'error': 'Invalid verify token'}), 403
-
-        logging.info("Returning default webhook endpoint response.")
-        return "Webhook endpoint", 200
+        if 'hub.challenge' in request.args and request.args.get('hub.verify_token') == VERIFY_TOKEN:
+            logging.info("Webhook validation successful.")
+            return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
+        elif 'hub.challenge' in request.args:
+            logging.error("Invalid verify token received.")
+            return jsonify({'error': 'Invalid verify token'}), 403
+        else:
+            logging.info("Returning default webhook endpoint response.")
+            return "Webhook endpoint", 200
 
     # Handle token exchange and data processing
     authorization_code = request.args.get('code')
@@ -164,8 +162,6 @@ def exchange_token_handler():
             if not activities_df.empty:
                 elevation_summary = summarize_elevation_data(activities_df.copy())
 
-            # Unsubscribe from the webhook after processing the data
-            # subscription_id = "your_subscription_id_here"  # Replace with the actual subscription ID
             unsubscribe_from_webhook(subscription_id)
 
             return render_template('exchange_result.html',
@@ -176,10 +172,8 @@ def exchange_token_handler():
                                    scope=scope,
                                    elevation_summary=elevation_summary)
         else:
-            # unsubscribe_from_webhook(subscription_id)
             return render_template('error.html', error="Failed to exchange authorization code.")
     else:
-        # unsubscribe_from_webhook(subscription_id)
         error = request.args.get('error')
         return render_template('error.html', error=f"Authorization failed: {error}")
 
