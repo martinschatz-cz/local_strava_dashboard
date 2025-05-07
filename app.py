@@ -86,6 +86,7 @@ def delayed_subscription():
 def delayed_unsubscription():
     logging.debug("Entering delayed_unsubscription function.")
     def task():
+        time.sleep(5)
         global subscription_id
         with lock:
             if subscription_id:
