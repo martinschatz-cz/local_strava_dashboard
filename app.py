@@ -21,9 +21,6 @@ subscription_id = None
 initialized = False
 
 def subscribe_to_webhook():
-    """
-    Subscribes to the Strava webhook by sending a POST request to the subscription endpoint.
-    """
     payload = {
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
@@ -36,9 +33,6 @@ def subscribe_to_webhook():
     return None
 
 def unsubscribe_from_webhook(subscription_id):
-    """
-    Unsubscribes from the Strava webhook by sending a DELETE request to the subscription endpoint.
-    """
     url = f"{WEBHOOK_SUBSCRIPTION_URL}/{subscription_id}"
     params = {
         'client_id': CLIENT_ID,
@@ -47,9 +41,6 @@ def unsubscribe_from_webhook(subscription_id):
     requests.delete(url, params=params)
 
 def delayed_subscription():
-    """
-    Delays the subscription to ensure the app is fully started before subscribing.
-    """
     def task():
         time.sleep(5)  # Wait for 5 seconds before subscribing
         global subscription_id
@@ -57,9 +48,6 @@ def delayed_subscription():
     threading.Thread(target=task).start()
 
 def delayed_unsubscription():
-    """
-    Delays the unsubscription to ensure proper cleanup after the app is stopped.
-    """
     def task():
         time.sleep(10)  # Wait for 10 seconds before unsubscribing
         if subscription_id:
@@ -68,9 +56,6 @@ def delayed_unsubscription():
 
 @app.before_request
 def initialize_subscription():
-    """
-    Initializes the webhook subscription before handling the first request.
-    """
     global initialized
     if not initialized:
         initialized = True
@@ -78,16 +63,10 @@ def initialize_subscription():
 
 @app.teardown_appcontext
 def cleanup_subscription(exception=None):
-    """
-    Cleans up the webhook subscription when the app context is torn down.
-    """
     delayed_unsubscription()
 
 @app.route('/exchange_token', methods=['GET'])
 def exchange_token_handler():
-    """
-    Handles the webhook validation request.
-    """
     if 'hub.challenge' in request.args:
         if request.args.get('hub.verify_token') == VERIFY_TOKEN:
             return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
