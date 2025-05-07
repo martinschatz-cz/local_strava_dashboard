@@ -12,6 +12,6 @@ EXPOSE 5000
 ENV CLIENT_ID=${CLIENT_ID}
 ENV CLIENT_SECRET=${CLIENT_SECRET}
 # adding port did not change anything 
-ENV REDIRECT_URI=localhost:8042/exchange_token
+ENV REDIRECT_URI=strava.schaetz.cz/exchange_token
 
 CMD ["python", "app.py"]
