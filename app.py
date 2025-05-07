@@ -1,3 +1,37 @@
+**Problem 1: Callback URL validation failure**  
+The error message indicates that the Strava API is rejecting the webhook subscription request because the `callback_url` provided in the payload does not return a `200 OK` response when accessed via a `GET` request. This is a requirement for Strava webhook subscriptions.
+
+### Fix:
+Ensure that the `CALLBACK_URL` is correctly configured and accessible. Additionally, update the `/exchange_token` route to always return a `200 OK` response for `GET` requests, even if no `hub.challenge` parameter is provided.
+
+#### Code Before:
+```python
+@app.route('/exchange_token', methods=['GET'])
+def exchange_token_handler():
+    if 'hub.challenge' in request.args:
+        if request.args.get('hub.verify_token') == VERIFY_TOKEN:
+            return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
+        else:
+            return jsonify({'error': 'Invalid verify token'}), 403
+    return "Webhook endpoint"
+```
+
+#### Code After:
+```python
+@app.route('/exchange_token', methods=['GET'])
+def exchange_token_handler():
+    if 'hub.challenge' in request.args:
+        if request.args.get('hub.verify_token') == VERIFY_TOKEN:
+            return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
+        else:
+            return jsonify({'error': 'Invalid verify token'}), 403
+    return "Webhook endpoint", 200
+```
+
+---
+
+### Completely Fixed Code:
+```python
 from flask import Flask, request, jsonify
 import requests
 import threading
@@ -76,7 +110,7 @@ def delayed_subscription():
     """
     logging.debug("Entering delayed_subscription function.")
     global subscription_id
-    time.sleep(2)  # Wait for the app to fully start
+    time.sleep(4)  # Wait for the app to fully start
     logging.info("Starting delayed subscription to webhook.")
     try:
         subscription_id = subscribe_to_webhook()
@@ -120,8 +154,9 @@ def exchange_token_handler():
         else:
             logging.error("Invalid verify token received.")
             return jsonify({'error': 'Invalid verify token'}), 403
-    return "Webhook endpoint"
+    return "Webhook endpoint", 200
 
 if __name__ == '__main__':
     logging.info("Starting Flask application.")
     app.run(debug=True, port=5000, host='0.0.0.0')
+```
