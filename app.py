@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, make_response
 import requests
 import threading
 import time
@@ -139,13 +139,16 @@ def exchange_token_handler():
     if request.method == 'GET':
         if 'hub.challenge' in request.args and request.args.get('hub.verify_token') == VERIFY_TOKEN:
             logging.info("Webhook validation successful.")
-            return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
+            # return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200 #old
+            response = make_response(jsonify({"hub.challenge": request.args.get("hub.challenge")}), 200)
+            response.headers["Content-Type"] = "application/json"
+            return response
         elif 'hub.challenge' in request.args:
             logging.error("Invalid verify token received.")
             return jsonify({'error': 'Invalid verify token'}), 403
         else:
             logging.info("Returning default webhook endpoint response.")
-            return "Webhook endpoint", 200
+            return "Default webhook endpoint response", 200
 
     # Handle token exchange and data processing
     authorization_code = request.args.get('code')
