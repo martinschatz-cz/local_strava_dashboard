@@ -137,24 +137,21 @@ def exchange_token_handler():
         Response: HTML response with the result of the token exchange and activity processing.
     """
     if request.method == 'GET':
+        hub_challenge = request.args.get('hub.challenge')
+        verify_token = request.args.get('hub.verify_token')
 
-        if 'hub.challenge' in request.args:
-            if request.args.get('hub.verify_token') == VERIFY_TOKEN:
-                logging.info("Webhook validation successful.")
-                return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200
-            else:
-                logging.error("Invalid verify token received.")
-                return jsonify({'error': 'Invalid verify token'}), 403
-
-        # if 'hub.challenge' in request.args and request.args.get('hub.verify_token') == VERIFY_TOKEN:
-        #     logging.info("Webhook validation successful.")
-        #     # return jsonify({'hub.challenge': request.args.get('hub.challenge')}), 200 #old
-        #     response = make_response(jsonify({"hub.challenge": request.args.get("hub.challenge")}), 200)
-        #     response.headers["Content-Type"] = "application/json"
-        #     return response
-        # elif 'hub.challenge' in request.args:
-        #     logging.error("Invalid verify token received.")
-        #     return jsonify({'error': 'Invalid verify token'}), 403
+        if hub_challenge and verify_token == VERIFY_TOKEN:
+            logging.info("Webhook validation successful.")
+            logging.info(f"Hub Challenge: {hub_challenge}")
+            logging.info(f"Token: {verify_token}")
+            response = jsonify({"hub.challenge": hub_challenge})
+            response.headers["Content-Type"] = "application/json"
+            return response, 200
+        elif hub_challenge:
+            logging.error("Invalid verify token received.")
+            response = jsonify({"error": "Invalid verify token"})
+            response.headers["Content-Type"] = "application/json"
+            return response, 403
         else:
             logging.info("Returning default webhook endpoint response.")
             return "Default webhook endpoint response", 200
