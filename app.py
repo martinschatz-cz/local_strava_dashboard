@@ -38,7 +38,7 @@ REDIRECT_URI = "https://strava.schaetz.cz/exchange_token"  # Redirect URI for OA
 TOKEN_URL = "https://www.strava.com/oauth/token"  # URL to exchange authorization code for tokens
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"  # URL to fetch activities
 WEBHOOK_SUBSCRIPTION_URL = "https://www.strava.com/api/v3/push_subscriptions"  # URL for webhook subscription
-CALLBACK_URL = "https://strava.schaetz.cz/exchange_token"  # Callback URL for webhook
+CALLBACK_URL = "http://strava.schaetz.cz/exchange_token"  # Callback URL for webhook
 VERIFY_TOKEN = "STRAVA"  # Token to verify webhook requests
 
 subscription_id = None
